@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String    @unique
+  userId       String    @db.ObjectId
+  expires      DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  email           String    @unique
+  emailVerified   DateTime?
+  image           String?
+  username        String?   @unique
+  bio             String?
+  accounts        Account[]
+  sessions        Session[]
+  videos          Video[]
+  role            UserRole  @default(USER)
+  comments        Comment[]
+  subscription    Channel[] @relation("subscription", fields: [subscriptionIds], references: [id])
+  subscriptionIds String[]  @db.ObjectId
+  channel         Channel?  @relation("channelUser")
+  likes           Video[]   @relation("likesinvideo", fields: [likesIds], references: [id])
+  likesIds        String[]  @db.ObjectId
+  dislikes        Video[]   @relation("dislikesinvideo", fields: [dislikesIds], references: [id])
+  dislikesIds     String[]  @db.ObjectId
+  createdAt       DateTime? @default(now())
+  updatedAt       DateTime? @updatedAt
+
+  history History[]
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model Video {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String    @db.ObjectId
+  videoId     String    @unique
+  title       String
+  likes       User[]    @relation("likesinvideo", fields: [likesIds], references: [id])
+  likesIds    String[]  @db.ObjectId
+  dislikes    User[]    @relation("dislikesinvideo", fields: [dislikesIds], references: [id])
+  dislikesIds String[]  @db.ObjectId
+  description String?
+  url         String
+  thumbnail   String    @default("https://i.ytimg.com/vi/T2qrqv4Jq84/hqdefault.jpg?sqp=-oaymwEjCPYBEIoBSFryq4qpAxUIARUAAAAAGAElAADIQj0AgKJDeAE=&rs=AOn4CLBZ5JvQ9EYUKH1phEPnYmqBc-KaGw")
+  views       Float     @default(0)
+  category    Category  @relation(fields: [categoryId], references: [id])
+  categoryId  String    @db.ObjectId
+  comments    Comment[]
+  channel     Channel   @relation(fields: [channelId], references: [id])
+  channelId   String    @db.ObjectId
+
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  history   History?    @relation(fields: [historyId], references: [id])
+  historyId String?     @db.ObjectId
+  Community Community[]
+}
+
+model Channel {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  username       String      @unique
+  bio            String?
+  logo           String
+  banner         String?
+  user           User        @relation("channelUser", fields: [userId], references: [id])
+  userId         String      @unique @db.ObjectId
+  subscribers    User[]      @relation("subscription", fields: [subscribersIds], references: [id])
+  subscribersIds String[]    @db.ObjectId
+  email          String?
+  videos         Video[]
+  verified       Boolean     @default(false)
+  active         Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  community      Community[]
+}
+
+model Category {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  slug      String    @unique
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+  videos    Video[]
+}
+
+model Comment {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @db.ObjectId
+  Video     Video     @relation(fields: [videoId], references: [id])
+  videoId   String    @db.ObjectId
+  text      String
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+}
+
+model History {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String   @db.ObjectId
+  videos    Video[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Community {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  channel   Channel  @relation(fields: [channelId], references: [id])
+  content   String
+  video     Video?   @relation(fields: [videoId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  channelId String  @db.ObjectId
+  videoId   String? @db.ObjectId
+}
